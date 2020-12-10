@@ -8,6 +8,7 @@ import sys
 import logging as log 
 import sqlite3
 import os
+import config
 
 ip = "127.0.0.1"
 port = 7000
@@ -44,29 +45,34 @@ class ClietThread(threading.Thread):
                     self.cursor = db_conn.cursor()
 
                     path = msg.split(",")
-                    if len(path) < 2:
-                        log.error("\t[2.1]\t->\tINVALID FORMAT")
-                        self.connection.sendall("2.1,INVALID FORMAT".encode())
-                    else:
-                        log.info(f"{self.ip_address}:{self.port} >> {path}")
 
-                        self.cursor.execute(f"SELECT id FROM luoghi WHERE luoghi.nome = \"{path[0]}\" OR  luoghi.nome = \"{path[1]}\" ")
-                        ids = self.cursor.fetchall()
-                        log.info(f"{self.ip_address}:{self.port} >> {ids}")
+                    try: 
+                        try:
+                            log.info(f"{self.ip_address}:{self.port} >> {path}")
 
-                        if len(ids) < 2:
-                            log.error("\t[1.2]\t->\tEND/START NOT FOUND")
-                            self.connection.sendall("1.2,END/START NOT FOUND".encode())
-                        else:
+                            self.cursor.execute(f"SELECT id FROM luoghi WHERE luoghi.nome = \"{path[0]}\" OR  luoghi.nome = \"{path[1]}\" ")
+                            ids = self.cursor.fetchall()
+                            log.info(f"{self.ip_address}:{self.port} >> {ids}")
+                        except:
+                            log.error("\t[2.1]\t->\tINVALID FORMAT")
+                            self.connection.sendall("2.1,INVALID FORMAT".encode())
+                        
+
+                        try:
                             self.cursor.execute(f"SELECT percorso FROM percorsi, inzio_fine WHERE inzio_fine.id_start = {int(ids[0][0])} AND inzio_fine.id_end = {int(ids[1][0])} AND percorsi.id = inzio_fine.id_percorso ")
                             percorso = self.cursor.fetchone()
                             log.info(percorso)
-                        
-                            if percorso == None:
-                                log.error("\t[1.1]\t->\tPATH NOT FOUND")
-                                self.connection.sendall("1.1,PATH NOT FOUND".encode())
-                            else:
-                                self.connection.sendall(("0.0,"+percorso[0]).encode())
+                        except:
+                            log.error("\t[1.2]\t->\tEND/START NOT FOUND")
+                            self.connection.sendall("1.2,END/START NOT FOUND".encode())
+                        try:
+                            self.connection.sendall(("0.0,"+percorso[0]).encode())
+                        except:
+                            log.error("\t[1.1]\t->\tPATH NOT FOUND")
+                            self.connection.sendall("1.1,PATH NOT FOUND".encode())
+                    except:
+                        log.error("\t[4.0]\t->\tGENERAL ERROR")
+                        self.connection.sendall("4.0,GENERAL ERROR".encode())
 
 def delete_connection(t):
     global connection_table
